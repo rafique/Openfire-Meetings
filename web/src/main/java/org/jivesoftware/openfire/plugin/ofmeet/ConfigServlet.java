@@ -23,25 +23,30 @@
 
 package org.jivesoftware.openfire.plugin.ofmeet;
 
-import org.igniterealtime.openfire.plugin.ofmeet.config.OFMeetConfig;
-import org.jivesoftware.openfire.XMPPServer;
-import org.jivesoftware.util.JiveGlobals;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.*;
-import java.util.HashMap;
-import java.util.Map;
+
+import org.igniterealtime.openfire.plugin.ofmeet.config.OFMeetConfig;
+import org.jivesoftware.openfire.XMPPServer;
+import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.Version;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A servlet that generates a snippet of javascript (json) that is the 'config' variable, as used by the Jitsi
@@ -270,9 +275,15 @@ public class ConfigServlet extends HttpServlet
     public static URI getMostPreferredConnectionURL( HttpServletRequest request ) throws URISyntaxException
     {
         Log.debug( "[{}] Generating BOSH URL based on {}", request.getRemoteAddr(), request.getRequestURL() );
-        if ( XMPPServer.getInstance().getPluginManager().getPlugin( "websocket" ) != null )
+        final boolean webSocketInCore = !new Version(4, 2, 0, null, -1 ).isNewerThan( XMPPServer.getInstance().getServerInfo().getVersion() );
+        if ( webSocketInCore || XMPPServer.getInstance().getPluginManager().getPlugin( "websocket" ) != null )
         {
             Log.debug( "[{}] Websocket plugin is available. Returning a websocket address.", request.getRemoteAddr() );
+            if ("https".equals(request.getHeader("X-Forwarded-Proto")))
+            {
+            		return new URI( "wss", null, request.getServerName(), 443, "/ws/", null, null);
+            }
+
             final String websocketScheme;
             if ( request.getScheme().endsWith( "s" ) )
             {
